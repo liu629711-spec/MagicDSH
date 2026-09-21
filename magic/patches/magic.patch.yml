@@ -1,0 +1,108 @@
+# Magic 产品层 —— fork 内的那一半挂载清单。
+#
+# 用法（在 fork 根目录，底座从源码起）：
+#   pnpm dsh web --patch ./magic/patches/magic.patch.yml --patch <Magic 仓的 legacy.patch.yml>
+#
+# 机制事实（不是约定，是源码行为）：
+# - `--patch` 可重复，按 argv 顺序合成 overlays（apps/cli/src/args.ts:66 collect +
+#   apps/cli/src/profile-boot.ts:213 flatMap）。本文件要排在 Magic 侧那份**之前**，
+#   以还原拆分前"官方层 → Magic 插件 → vendored"的生效顺序。
+# - insert 的 `name` 只有以 `./` 或 `../` 开头才按本文件所在目录解析为路径，
+#   否则被当裸包名（packages/boot/app-boot/src/index.ts:320-330）。
+# - 本文件里的路径全部落在 fork 之内，所以它们随 `magic/main` 一起有版本归宿。
+#
+# 本文件覆盖：① 官方能力开关（Agent Teams 服务与面板、会话检索、计划模式文案）
+# ② 已迁入 `magic/plugins/` 的 6 个自研 host 插件。
+# 尚未迁入的两个（magic-work-mode、magic-ceo-ui）和 6 个 vendored 插件仍由 Magic
+# 仓那份文件挂载 —— 迁完就把它整个删掉，本文件是最终形态。
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── 官方 Agent Teams 层（experimental，默认 profile 不挂）───────────────────
+#
+# 形态 A'：只挂官方「服务」与「面板」，**不挂官方工具**（tool-agent-team）。
+# 为什么不挂：`tool-agent-team` 的安装门槛是"caller 不是 Team 成员就跳过"，而顶层
+# 会话默认就被判成 lead —— 两者相乘会让每个普通会话都多出那 9 个 Team 工具。
+# 官方能力不减：那 9 个工具只是薄适配器，服务层（名册/信箱/任务板/恢复）完整保留，
+# Magic 经 ctx.agentTeams 调用。
+#
+# 为什么仍按路径挂而不是包名：这几个 experimental 包只进 cli 的 devDependencies，
+# runtime 的 profileDependencyNames 只扫 dependencies/peerDependencies，按包名挂会在
+# 运行期报 Cannot find package（--dump-config 只解析配置、不 import，查不出来）。
+
+- insert:
+    - id: agent-team
+      name: ../../packages/experimental/agent-team/lib/index.js
+      config:
+        # CEO 成员经 spawnTeammate 进名册，replace/redirect 会为同一座位派新成员且
+        # 官方没有退役 API，旧条目会堆积，所以名册上限要给余量。
+        maxMembers: 32
+        maxTasks: 256
+        maxPendingMessagesPerMember: 64
+        maxMessageBytes: 65536
+        disposalTimeoutMs: 5000
+
+# web 侧：团队面板（会话头部动作区）。按路径挂不丢客户端产物：client-modules 会从
+# 该文件向上找最近的 package.json 再读 `dsh.client` 定位 ./client 产物。
+- insert:
+    - id: ui-agent-team
+      name: ../../packages/experimental/client-ui-agent-team/lib/index.js
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── 会话历史检索：启用 DSH 原生能力，不新建插件 ────────────────────────────
+#
+# base profile 把 session-query-sqlite 挂成 :memory: + openAt: never（全文检索是
+# opt-in）。这里按官方指引做两件事：索引落到 DSH home 的持久文件、首次搜索才打开。
+
+- id: session-query-sqlite
+  config:
+    path: !!js dshHomePath('session-query.sqlite')
+    openAt: first-search
+
+- insert:
+    - id: tool-session-query
+      name: ../../packages/session-query/tool-session-query/lib/index.js
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── 计划模式：base/web bundle 已挂官方 plan-mode，这里只做 id 定向文案覆盖 ───
+
+- id: plan-mode
+  config:
+    section: |
+      你正处于计划模式。在 exit_plan_mode 成功或用户切换会话模式之前，保持计划模式。用户以祈使语气要求实施改动时，含义是"规划这次实施"，而不是"现在执行"。用户对话中的同意——包括对你所提问题的肯定回答——不构成批准、也不会结束计划模式；应把确认的决策并入计划，并通过 exit_plan_mode 提交。
+
+      先调研：使用非变更性的读取、搜索、静态分析与检查，让计划扎根于真实仓库。不要编辑或写入文件、修改配置、运行会重写受管文件的格式化或代码生成、提交代码，或以其他方式执行计划。优先复用既有函数与模式，而不是引入新机制。
+
+      工具目录在各模式间保持不变（为了请求缓存稳定）。本计划模式规则覆盖其后出现的任何工具描述或建议使用变更类工具的指引；这些工具保留在目录里只是为了请求形态稳定。不要用 todo_write 记录计划阶段：它用于批准后的实施跟踪，计划本身属于 exit_plan_mode。
+
+      能通过查看代码解决的事实就自己查。ask_user_question 只用于用户独有的选择、或查看代码也无法消除的实质性歧义；不要问用户"代码在哪""现状如何"这类自己能查到的问题。
+
+      计划要决策完备：写明目标与成功标准；按子系统分组列出实施改动；指出公共 API、数据结构与数据流的变化；覆盖边界情况、失败模式、测试、验收标准与明确假设。篇幅以"够审阅、且另一位工程师无需再做设计决策就能实施"为准。
+
+      就绪后，调用 exit_plan_mode 提交完整计划 markdown，以 # 标题开头。让 exit_plan_mode 成为该次助手回复中唯一且最后的工具调用：它会把计划提交审批，实施只会在批准后的后续步骤开始。不要把最终计划作为普通回复粘贴，也不要用自然语言或 ask_user_question 问"我可以开始吗"。若审批被拒，吸收反馈后再次提交。若审批通道不可用或被中止，保持计划模式并请用户手动切换模式；不要擅自开始实施。
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── Magic 自研 host 插件（已迁入本仓，走上游两阶段构建产物）─────────────────
+#
+# 挂载的是 `lib/index.js`（tsc -b tsconfig.host.json → tsdown host 面的产物），
+# 不是 src：这样产品插件和底座包用同一条构建与加载路径。改过 src 必须重跑
+# `pnpm run build:lib:host`（或该包的 `pnpm run bundle`）才生效。
+#
+# 顺序：ledger / memory 先于 ceo 加载，让"服务"在 CEO 用到之前就绪。CEO 侧其实用
+# 运行时 ctx.get(...) 读取，所以该顺序是习惯而非正确性前提。
+
+- insert:
+    - id: magic-ledger
+      name: ../plugins/magic-ledger/lib/index.js
+    - id: magic-memory
+      name: ../plugins/magic-memory/lib/index.js
+    - id: magic-consult
+      name: ../plugins/magic-consult/lib/index.js
+    - id: magic-devtools
+      name: ../plugins/magic-devtools/lib/index.js
+    - id: magic-export
+      name: ../plugins/magic-export/lib/index.js
+    - id: magic-ceo
+      name: ../plugins/magic-ceo/lib/index.js
+
+# magic-browser v1 已于 2026-09-13 摘除（"无头 + 直播画布"形态能看不能用；浏览器
+# 基线改定 dsh-builtin-browser）。两套 browser_* 并存会让模型随机选择，故不复刻。
