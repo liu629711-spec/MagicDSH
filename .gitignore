@@ -50,3 +50,7 @@ native/system/test/bin/
 
 # Magic 产品层运行态（start-web.mjs 默认 DSH_HOME）
 .magic-live/
+
+# 第三方 vendored 插件不进产品仓（裁定见 magic/docs/决策记录.md）：留在老仓按路径引用。
+# 这条同时是道闸门 —— 真要收编某个第三方包必须 git add -f，逼一次显式决定。
+/magic/plugins/dsh-*/

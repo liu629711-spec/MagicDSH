@@ -13,14 +13,14 @@ magic/
 ├─ plugins/           我们的插件（@magic/* scope）
 ├─ patches/           挂载清单
 │  ├─ magic.patch.yml         官方能力开关 + 已迁入 fork 的产品插件
-│  └─ legacy-vendored.patch.yml  过渡：还没对表裁定的第三方/vendored 与 ceo-ui
+│  └─ legacy-vendored.patch.yml  按路径引用老仓：第三方 vendored 与 ceo-ui（长期状态，非待清理）
 ├─ scripts/
 │  └─ start-web.mjs   一条命令起 Magic 实例（web 面）
 └─ docs/
    ├─ README.md       本文件
    ├─ 底座边界.md      我们改了底座哪几处 · 禁改清单 · 构建怎么生效
    ├─ 决策记录.md      裁定时间线（含待裁定）
-   ├─ 产品/           PRD：产品语义唯一真源
+   ├─ 产品/           PRD：产品语义唯一真源（**重写**，不从老仓搬）
    ├─ 对标-3099基线.md  3099 能力清单 × 底座有无官方对应 × 结论
    └─ 00-仓库与文档收口方案.md  本次收口的方案原件（待签字）
 ```
