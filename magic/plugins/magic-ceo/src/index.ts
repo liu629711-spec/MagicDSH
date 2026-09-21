@@ -157,7 +157,7 @@ const abortsByParent = new Map<string, Map<string, AbortController>>()
 /** Cumulative token usage per (parentSessionId, runId). */
 const usageByParent = new Map<string, Map<string, CeoTokenUsage>>()
 
-/** Context channels fed to each member's prompt, for provenance display. */
+/** Context channels fed to each member's prompt, with the size each carried. */
 const channelsByParent = new Map<string, Map<string, CeoContextChannel[]>>()
 
 // ── 持久快照：`magic_ceo` 域（W1 接线）─────────────────────────────────────
@@ -967,7 +967,7 @@ export function apply(ctx: {
       const extra = [
         member?.steer,
       ].filter((item): item is string => typeof item === 'string' && item.trim() !== '').join('\n')
-      // Provenance: every channel this prompt carries, with its size. The member
+      // Every channel this prompt carries, with its size. The member
       // sees the same list at the end of its prompt so it can reason about gaps.
       const channels: CeoContextChannel[] = []
       const pushChannel = (channel: string, text: string | undefined, truncated = false): void => {
@@ -1145,7 +1145,7 @@ export function apply(ctx: {
         })
         withStore((store) => { void store.addUsage(parentSessionId, spec.runId, { ...usage }) })
       }
-      // Persist prompt provenance so the UI can show what the member was fed.
+      // Persist the channels this prompt carried so the UI can show what the member was fed.
       const nodeChannels = channelsMapOf(parentSessionId).get(spec.runId)
       if (nodeChannels !== undefined && nodeChannels.length > 0 && graph.turn !== undefined && graph.callId !== '') {
         appendCeoMemberContext(parent.session, {

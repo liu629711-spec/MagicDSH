@@ -426,7 +426,7 @@ export interface CeoContextChannel {
   truncated: boolean
 }
 
-/** Provenance of what one member was fed: channel name + size + lossiness. */
+/** What one member's prompt was fed: channel name + size + lossiness. */
 export interface CeoMemberContextData {
   turn: number
   callId: string
@@ -475,12 +475,12 @@ export function appendCeoMemberUsage(session: JournalSession, data: CeoMemberUsa
   }
 }
 
-/** Persist the provenance channels one member's prompt carried. */
+/** Persist the channels one member's prompt carried. */
 export function appendCeoMemberContext(session: JournalSession, data: CeoMemberContextData): void {
   try {
     appendIgnorable(session, 'ceo/member-context', data)
   } catch {
-    // Provenance projection is observational.
+    // The member-context projection is observational.
   }
 }
 

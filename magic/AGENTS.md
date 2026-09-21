@@ -55,7 +55,10 @@ date: 2026-09-21
 3. **改 `magic/` 以外任何文件，源码里留 `Magic fork delta:` 注释，并在
    `magic/docs/底座边界.md` 登记表加一行**（文件、改了什么、为什么、怎么回退）。
 4. **不得改槽位契约**：槽名、owner props、cardinality 一变，挂在 `ctx.slots` 上的全部插件
-   一起崩。要换某个官方部件的表现，用 `ctx.slots.register` 复用同一 cell + priority 影子。
+   一起崩。要换某个官方部件的表现，用 `ctx.slots.register` 复用同一 cell，**不要自己传
+   `priority`**：非 chain 槽的 priority 一律被客户端门面覆盖成页面内局部序（首个注册者拿到 −1，
+   低于全部出厂项，所以 `single`/`keyed` 格里注册者即赢家；`list` 只能追加，复用同 id 才替换同格）；
+   且必须包在 `ctx.slots.inject(name, () => register(...))` 里。机制与出处见 `docs/底座边界.md` §2.1。
 5. **界面改造按四层递进，能停上层就不进下层**：① `ui-theme` 令牌表 → ② skeleton 布局 →
    ③ 槽位影子替换单个部件 → ④ 改官方组件源码。第 ④ 层每动一处都要进 §5.3 的登记表。
 6. 新能力优先做成插件；只有属于"我们的界面与产品形态"的东西才改进底座；不复制底座的
