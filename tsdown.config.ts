@@ -16,11 +16,12 @@ function isBuildFaceClient(value: unknown): boolean {
 export default defineConfig(({ env }) => {
   const client = isBuildFaceClient(env?.DSH_BUILD_FACE)
   return {
-    // Magic fork delta: our product plugins are host-side only (no browser bundle),
-    // so they join the Host pass only. The Client pass leaves them out because its
-    // `entry` is empty and expects a package-local tsdown config to drive it.
+    // Magic fork delta: our product plugins live under magic/plugins/*. Those with a
+    // browser bundle carry a package-local tsdown.config.ts (the root config's empty
+    // `entry` on the Client pass removes a package before entry resolution, so the
+    // host-only ones simply drop out of the Client pass instead of erroring).
     workspace: client
-      ? ['vendor/*', 'packages/*/*', 'apps/cli']
+      ? ['vendor/*', 'packages/*/*', 'apps/cli', 'magic/plugins/*']
       : ['vendor/*', 'packages/*/*', 'apps/cli', 'apps/desktop', 'apps/desktop-host', 'magic/plugins/*'],
     entry: client ? '' : ['lib/types/{index,invariant,startup}.js'],
     outDir: 'lib',

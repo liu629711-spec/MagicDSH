@@ -1,0 +1,3 @@
+- insert:
+    - id: magic-work-mode
+      name: '@magic/dsh-work-mode'

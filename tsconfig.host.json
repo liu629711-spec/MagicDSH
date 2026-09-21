@@ -415,6 +415,7 @@
     { "path": "./magic/plugins/magic-memory" },
     { "path": "./magic/plugins/magic-consult" },
     { "path": "./magic/plugins/magic-devtools" },
-    { "path": "./magic/plugins/magic-ceo" }
+    { "path": "./magic/plugins/magic-ceo" },
+    { "path": "./magic/plugins/magic-work-mode" }
   ]
 }

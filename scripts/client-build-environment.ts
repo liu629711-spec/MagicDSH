@@ -38,6 +38,9 @@ const CLIENT_ARTIFACT_PATTERNS = [
   'packages/*/*/lib/client.js.map',
   'packages/*/*/lib/client.*.js',
   'packages/*/*/lib/client.*.js.map',
+  // Magic fork delta: product-layer browser bundles must bust the /plugins rev too.
+  'magic/plugins/*/lib/client.js',
+  'magic/plugins/*/lib/client.js.map',
 ] as const
 
 /** Public values embedded in one set of client artifacts. */

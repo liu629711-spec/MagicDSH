@@ -839,6 +839,15 @@ importers:
 
   magic/plugins/magic-memory: {}
 
+  magic/plugins/magic-work-mode:
+    devDependencies:
+      '@types/react':
+        specifier: ~18.3.1
+        version: 18.3.31
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+
   native/system:
     devDependencies:
       '@deepseek-ai/node-addon-system':

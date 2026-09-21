@@ -358,15 +358,20 @@ const clientExternalCache = new Map<string, ReadonlySet<string>>()
 function workspaceManifest(id: string): WorkspaceManifest {
   const cached = manifestCache.get(id)
   if (cached !== undefined) return cached
-  for (const manifestPath of globSync('packages/*/*/package.json', { cwd: REPOSITORY_ROOT })) {
-    const manifest = JSON.parse(
-      readFileSync(resolvePath(REPOSITORY_ROOT, manifestPath), 'utf8'),
-    ) as WorkspaceManifest
-    if (manifest.name !== id) continue
-    manifestCache.set(id, manifest)
-    return manifest
+  // Magic fork delta: the product layer lives under magic/plugins/* instead of
+  // packages/*/*, so its manifests must be readable here too. Additive only —
+  // the harness's own packages resolve exactly as before.
+  for (const pattern of ['packages/*/*/package.json', 'magic/plugins/*/package.json']) {
+    for (const manifestPath of globSync(pattern, { cwd: REPOSITORY_ROOT })) {
+      const manifest = JSON.parse(
+        readFileSync(resolvePath(REPOSITORY_ROOT, manifestPath), 'utf8'),
+      ) as WorkspaceManifest
+      if (manifest.name !== id) continue
+      manifestCache.set(id, manifest)
+      return manifest
+    }
   }
-  throw new Error(`tsdown: no packages/*/*/package.json declares the name ${id}`)
+  throw new Error(`tsdown: no workspace package.json declares the name ${id}`)
 }
 
 /**

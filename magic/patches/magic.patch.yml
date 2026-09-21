@@ -81,16 +81,22 @@
       就绪后，调用 exit_plan_mode 提交完整计划 markdown，以 # 标题开头。让 exit_plan_mode 成为该次助手回复中唯一且最后的工具调用：它会把计划提交审批，实施只会在批准后的后续步骤开始。不要把最终计划作为普通回复粘贴，也不要用自然语言或 ask_user_question 问"我可以开始吗"。若审批被拒，吸收反馈后再次提交。若审批通道不可用或被中止，保持计划模式并请用户手动切换模式；不要擅自开始实施。
 
 # ═══════════════════════════════════════════════════════════════════════════
-# ── Magic 自研 host 插件（已迁入本仓，走上游两阶段构建产物）─────────────────
+# ── Magic 自研插件（已迁入本仓，走上游两阶段构建产物）───────────────────────
 #
 # 挂载的是 `lib/index.js`（tsc -b tsconfig.host.json → tsdown host 面的产物），
 # 不是 src：这样产品插件和底座包用同一条构建与加载路径。改过 src 必须重跑
 # `pnpm run build:lib:host`（或该包的 `pnpm run bundle`）才生效。
 #
+# magic-work-mode 还带浏览器件：它的包内有 tsdown.config.ts 调官方 clientBundle
+# preset，产物是 lib/client.js，由 client-modules 从上面的挂载点向上读
+# package.json 的 `dsh.client` 找到。它需要 `pnpm run build:lib:client` 才更新。
+#
 # 顺序：ledger / memory 先于 ceo 加载，让"服务"在 CEO 用到之前就绪。CEO 侧其实用
 # 运行时 ctx.get(...) 读取，所以该顺序是习惯而非正确性前提。
 
 - insert:
+    - id: magic-work-mode
+      name: ../plugins/magic-work-mode/lib/index.js
     - id: magic-ledger
       name: ../plugins/magic-ledger/lib/index.js
     - id: magic-memory
