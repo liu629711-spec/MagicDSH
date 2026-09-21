@@ -43,7 +43,8 @@ export function sniffImage(bytes: Uint8Array): SniffedImage | null {
     let i = 2
     while (i + 9 < bytes.length) {
       if (bytes[i] !== 0xff) { i += 1; continue }
-      const marker = bytes[i + 1]
+      // 与 bytes[i + 1] 同索引同语义（view 按 byteOffset 建），但返回 number 而非 number | undefined。
+      const marker = view.getUint8(i + 1)
       if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { i += 2; continue }
       if (bytes.length < i + 4) return null
       const segLen = view.getUint16(i + 2)

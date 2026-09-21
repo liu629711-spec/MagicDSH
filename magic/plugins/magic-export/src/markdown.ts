@@ -137,7 +137,6 @@ export function inlineTextWithImages(
     return { text: '', warnings }
   }
   const parts: string[] = []
-  const linkStack: string[] = []
   const walk = (children: Token[]): void => {
     for (const child of children) {
       switch (child.type) {

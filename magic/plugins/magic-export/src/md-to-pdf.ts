@@ -18,7 +18,10 @@ import { LAYOUT_OFFICIAL, LAYOUT_STANDARD, type DocLayout } from './layout.ts'
 import { isCjkChar, inlineText, inlineTextWithImages, parseMarkdown, type Token } from './markdown.ts'
 import type { Tokens } from 'marked'
 
-const HEADING_PT: Record<number, number> = { 1: 20, 2: 16, 3: 14, 4: 12 }
+/** 标题深度：writeHeading 的入参只接受 clamp 后的 1..4，正是 HEADING_PT 的键集。 */
+type HeadingDepth = 1 | 2 | 3 | 4
+
+const HEADING_PT: Record<HeadingDepth, number> = { 1: 20, 2: 16, 3: 14, 4: 12 }
 const BODY_PT = 11
 const CODE_PT = 9
 const TABLE_PT = 10
@@ -170,7 +173,7 @@ function sanitizeText(text: string, font: PDFFont): string {
 // 块级渲染
 // ---------------------------------------------------------------------------
 
-function writeHeading(state: PdfState, fonts: FontBundle, text: string, level: number): void {
+function writeHeading(state: PdfState, fonts: FontBundle, text: string, level: HeadingDepth): void {
   const size = HEADING_PT[level]
   const gap = mm(level <= 2 ? 3 : 2)
   const lh = mm(7) // 蓝本 multi_cell(0, _LINE + 1)
@@ -199,9 +202,9 @@ function writeParagraph(
   }
   const lines = wrapText(sanitizeText(text, fonts.regular), fonts.regular, BODY_PT, state.usable)
   const indent = firstLineIndent ? 2 * BODY_PT : 0 // 首行缩进 2em（蓝本：FIRST_LINE_INDENT_CHARS * font_size）
-  for (let i = 0; i < lines.length; i += 1) {
+  for (const [i, line] of lines.entries()) {
     ensureSpace(state, LINE)
-    drawLine(state, lines[i], {
+    drawLine(state, line, {
       size: BODY_PT,
       font: fonts.regular,
       x: state.margin + (i === 0 ? indent : 0),
@@ -288,17 +291,17 @@ function writeTable(state: PdfState, fonts: FontBundle, rows: string[][]): void 
   const colW = state.usable / cols
   const gray = rgb(200 / 255, 200 / 255, 200 / 255)
   const headerFill = rgb(245 / 255, 245 / 255, 246 / 255)
-  for (let r = 0; r < rows.length; r += 1) {
+  for (const [r, row] of rows.entries()) {
     const isHeader = r === 0
     const font = isHeader ? fonts.bold : fonts.regular
     const cellLines = Array.from({ length: cols }, (_, c) => {
-      const cell = rows[r][c] ?? ''
+      const cell = row[c] ?? ''
       return wrapText(sanitizeText(cell === '' ? ' ' : cell, font), font, TABLE_PT, colW - mm(2))
     })
     const maxLines = Math.max(...cellLines.map((l) => l.length), 1)
     const rowH = maxLines * CODE_LINE + mm(2)
     ensureSpace(state, rowH + mm(2))
-    for (let c = 0; c < cols; c += 1) {
+    for (const [c, lines] of cellLines.entries()) {
       const x = state.margin + c * colW
       const rectTop = state.pageH - state.y - rowH
       if (isHeader) {
@@ -314,7 +317,7 @@ function writeTable(state: PdfState, fonts: FontBundle, rows: string[][]): void 
       } else {
         state.page.drawRectangle({ x, y: rectTop, width: colW, height: rowH, borderColor: gray, borderWidth: 0.5 })
       }
-      for (const line of cellLines[c]) {
+      for (const line of lines) {
         if (line === '') continue
         state.page.drawText(line, {
           x: x + mm(1),
@@ -382,7 +385,8 @@ function renderBlocks(
     switch (token.type) {
       case 'heading': {
         const heading = token as Tokens.Heading
-        const level = Math.max(1, Math.min(Number(heading.depth) || 1, 4))
+        // 夹到 1..4 = HEADING_PT 的键集（marked 的 depth 恒为 1..6 整数），故 writeHeading 收字面量联合。
+        const level = Math.max(1, Math.min(Number(heading.depth) || 1, 4)) as HeadingDepth
         writeHeading(state, fonts, inlineText(heading.tokens ?? []), level)
         break
       }

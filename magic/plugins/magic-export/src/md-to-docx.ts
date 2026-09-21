@@ -50,7 +50,10 @@ const FONT_BODY_CJK = '宋体'
 const FONT_HEADING_CJK = '黑体'
 const FONT_CODE = 'Consolas'
 
-const HEADING_PT: Record<number, number> = { 1: 22, 2: 18, 3: 16, 4: 14 }
+/** 标题深度：marked 的 depth 经 renderHeading 夹取后只会落在这四个值上，两张表据此做全函数索引。 */
+type HeadingDepth = 1 | 2 | 3 | 4
+
+const HEADING_PT: Record<HeadingDepth, number> = { 1: 22, 2: 18, 3: 16, 4: 14 }
 const BODY_PT = 12
 const CODE_PT = 10
 const LABEL_PT = 9
@@ -62,7 +65,7 @@ const hp = (pt: number): number => Math.round(pt * 2)
 const cmToTwip = (cm: number): number => Math.round(cm * 566.9291338582677)
 const inToPx = (inches: number): number => Math.round(inches * 96)
 
-const HEADING_LEVELS: Record<number, (typeof HeadingLevel)[keyof typeof HeadingLevel]> = {
+const HEADING_LEVELS: Record<HeadingDepth, (typeof HeadingLevel)[keyof typeof HeadingLevel]> = {
   1: HeadingLevel.HEADING_1,
   2: HeadingLevel.HEADING_2,
   3: HeadingLevel.HEADING_3,
@@ -267,7 +270,8 @@ function renderBlocks(tokens: Token[], blockCtx: BlockCtx): (Paragraph | Table)[
 }
 
 function renderHeading(token: Tokens.Heading, blockCtx: BlockCtx): Paragraph {
-  const level = Math.max(1, Math.min(Number(token.depth) || 1, 4))
+  // 夹到 1..4 正是两张标题表的键集（marked 的 depth 恒为 1..6 整数），断言成 HeadingDepth 让索引保持全函数。
+  const level = Math.max(1, Math.min(Number(token.depth) || 1, 4)) as HeadingDepth
   const runs = renderInlineChildren(inlineChildrenOf(token), {
     ...blockCtx,
     inHeading: true,
@@ -276,7 +280,7 @@ function renderHeading(token: Tokens.Heading, blockCtx: BlockCtx): Paragraph {
   return new Paragraph({
     heading: HEADING_LEVELS[level],
     // 文档大标题居中是 Word 通例（公文与技术报告都成立），故两档默认都开。
-    alignment: level === 1 ? AlignmentType.CENTER : undefined,
+    ...(level === 1 ? { alignment: AlignmentType.CENTER } : {}),
     spacing: { before: level <= 2 ? hp(12) : hp(8), after: hp(6) },
     children: runs,
   })
@@ -288,9 +292,10 @@ function renderParagraphOrImage(
   blockCtx: BlockCtx,
 ): void {
   const children = inlineChildrenOf(token)
+  const only = children[0]
   // 孤图片段落 → 独立图片块（比行内嵌在段里干净，蓝本同口径）。
-  if (children.length === 1 && children[0].type === 'image') {
-    out.push(...imageBlock(children[0] as Tokens.Image, blockCtx))
+  if (children.length === 1 && only?.type === 'image') {
+    out.push(...imageBlock(only as Tokens.Image, blockCtx))
     return
   }
   out.push(bodyParagraph(children, blockCtx, {}))
@@ -444,7 +449,8 @@ function renderImage(
     const height = Math.max(1, Math.round(width * (sniffed.height / sniffed.width)))
     return {
       runs: [new ImageRun({ type: sniffed.type, data, transformation: { width, height } })],
-      caption: alt !== '' ? alt : undefined,
+      // 无 alt 时不发 caption 键（ImageRender.caption 是精确可选属性，不是 string | undefined）。
+      ...(alt !== '' ? { caption: alt } : {}),
     }
   } catch (exc) {
     warn(blockCtx.warnings, `图片无法嵌入（${src}）：${exc instanceof Error ? exc.message : String(exc)}`)

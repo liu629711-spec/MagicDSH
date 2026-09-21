@@ -405,6 +405,11 @@
     { "path": "./packages/lsp/tool-lsp" },
     { "path": "./apps/cli" },
     { "path": "./apps/desktop-host" },
-    { "path": "./apps/desktop" }
+    { "path": "./apps/desktop" },
+    // Magic fork delta: product plugins under the @magic scope. They import no
+    // workspace package (host services are duck-typed), so they append last.
+    // Registering here is deliberate: it gives our code the same strict type
+    // checks the harness holds itself to instead of leaving it unchecked.
+    { "path": "./magic/plugins/magic-export" }
   ]
 }
