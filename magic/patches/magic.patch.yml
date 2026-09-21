@@ -12,9 +12,9 @@
 # - 本文件里的路径全部落在 fork 之内，所以它们随 `magic/main` 一起有版本归宿。
 #
 # 本文件覆盖：① 官方能力开关（Agent Teams 服务与面板、会话检索、计划模式文案）
-# ② 已迁入 `magic/plugins/` 的 6 个自研 host 插件。
-# 尚未迁入的两个（magic-work-mode、magic-ceo-ui）和 6 个 vendored 插件仍由 Magic
-# 仓那份文件挂载 —— 迁完就把它整个删掉，本文件是最终形态。
+# ② 已迁入 `magic/plugins/` 的 7 个自研插件（work-mode 带浏览器件，其余 host-only）。
+# 尚未迁入的只剩 magic-ceo-ui 一个，它和 6 个 vendored 插件仍由 Magic 仓那份文件
+# 挂载 —— 迁完就把它整个删掉，本文件是最终形态。
 
 # ═══════════════════════════════════════════════════════════════════════════
 # ── 官方 Agent Teams 层（experimental，默认 profile 不挂）───────────────────
