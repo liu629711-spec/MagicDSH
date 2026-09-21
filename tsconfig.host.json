@@ -410,6 +410,11 @@
     // workspace package (host services are duck-typed), so they append last.
     // Registering here is deliberate: it gives our code the same strict type
     // checks the harness holds itself to instead of leaving it unchecked.
-    { "path": "./magic/plugins/magic-export" }
+    { "path": "./magic/plugins/magic-export" },
+    { "path": "./magic/plugins/magic-ledger" },
+    { "path": "./magic/plugins/magic-memory" },
+    { "path": "./magic/plugins/magic-consult" },
+    { "path": "./magic/plugins/magic-devtools" },
+    { "path": "./magic/plugins/magic-ceo" }
   ]
 }

@@ -1,0 +1,3 @@
+- insert:
+    - id: magic-ledger
+      name: '@magic/dsh-ledger'

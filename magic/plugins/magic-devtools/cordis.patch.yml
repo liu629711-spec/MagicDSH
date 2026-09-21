@@ -1,0 +1,3 @@
+- insert:
+    - id: magic-devtools
+      name: '@magic/dsh-devtools'

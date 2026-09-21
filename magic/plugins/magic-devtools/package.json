@@ -1,0 +1,36 @@
+{
+  "name": "@magic/dsh-devtools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Magic developer tools (archive / git_ops) host plugin for DeepSeek Harness",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/types/**/*.js",
+    "lib/types/**/*.d.ts",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "web-tree-sitter": "^0.25.6",
+    "tree-sitter-wasms": "^0.1.11"
+  }
+}
