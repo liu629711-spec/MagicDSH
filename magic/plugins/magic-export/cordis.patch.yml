@@ -1,0 +1,3 @@
+- insert:
+    - id: magic-export
+      name: '@magic/dsh-export'

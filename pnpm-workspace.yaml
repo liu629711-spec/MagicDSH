@@ -13,6 +13,9 @@ packages:
   # Deploy root of the single-exe build: a pure dependency manifest whose
   # closure is what the exe bundles and what the Python runtime distributes.
   - python/sdk-runtime
+  # Magic product layer: first-party DSH plugins under the @magic scope, kept
+  # out of packages/ so upstream-scanning gates stay scoped to harness code.
+  - magic/plugins/*
 
 overrides:
   'extract-zip>yauzl': '3.4.0'
