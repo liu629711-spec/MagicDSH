@@ -122,6 +122,10 @@
     { "path": "./packages/api/workspace-files/tsconfig.client.json" },
     { "path": "./packages/client/web" },
     { "path": "./packages/context/file-reference" },
+    // Magic fork delta: magic-work-mode's browser half is bundled in the Client pass
+    // from lib/types/client, so dev:web must re-emit those types on src/client edits.
+    // Without this row the client bundle silently rebuilds from stale tsc output.
+    { "path": "./magic/plugins/magic-work-mode" },
     { "path": "./apps/web" }
   ]
 }
