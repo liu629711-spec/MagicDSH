@@ -1,0 +1,219 @@
+# 过渡挂载清单：还没做"能力对表"的东西。
+#
+# 位置就是它的用途声明：它住在产品仓里，但内容引用老仓，**每裁掉一条就少一条**，
+# 清空即删文件。判据（已裁定）：需求来自 3099，实现优先来自底座 —— 官方已有的
+# 能力要用官方的，并且**同时退役被替代的那份**（ego-browser 与 magic-browser 两套
+# browser_* 并存导致模型随机选择，就是没同时退役的下场）。
+#
+# 顺序：本片必须排在 magic.patch.yml **之后**（`--patch` 按 argv 顺序合成 overlays）。
+# 路径 `../../../Magic/...` 相对本文件解析到 sibling 目录 D:\Harmess\Magic；
+# 一旦某个包搬进 magic/plugins/，它的行就改成本仓路径或直接删除。
+#
+# 引用老仓 profile 目录（profiles/web 是我们的安装锚点，装 npm 侧依赖）：
+#   ../../../../Magic/profiles/web/... 形式的条目只出现在已注释块里。
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── 自研插件残余：magic-ceo-ui ─────────────────────────────────────────────
+# 它声明了 dsh.client，且用到第三方 @xyflow/react 与其 style.css；client 面在 fork
+# 里的构建路径要照 magic-work-mode 已跑通的做法（包内 tsdown.config.ts 调
+# clientBundle）单独验证。CEO 经 inject 读 magicWorkMode，注入按依赖拓扑排序，
+# 插入位置不影响 ceo 在 work-mode 之后激活。
+
+- insert:
+    - id: magic-ceo-ui
+      name: ../../../Magic/plugins/magic-ceo-ui/src/index.ts
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── vendored Agent 共享浏览器（PRD-02 §18 定稿基线）─────────────────────────
+#
+# dsh-builtin-browser v0.1.21 整仓源拷贝（MIT，LICENSE 保留于插件目录；上游镜像
+# reference-project/wqty123-dsh-browser，GitHub wqty123/dsh-browser）。
+# 2026-09-13 用户裁定：以它为浏览器能力基线。
+#
+# 形态＝「共享真实浏览器」：一只可见的原生浏览器窗口，agent 经 CDP 在与用户
+# 所见完全一致的同一页面里干活（DOM/无障碍快照 + 截图当眼睛，结构化定位
+# css/text/xpath，非盲点坐标），用户随时亲手接管，agent 感知变化继续。
+# 人机验证（Cloudflare/reCAPTCHA/hCaptcha/Turnstile）由 browser_challenge
+# 识别后停下请人在同一窗口完成，不硬刚。browser_* 工具 + 页面注释工具
+# （见下方本地补丁）；任务级会话隔离；cookie 持久化（browser_auth）；
+# 下载限定受控目录。
+#
+# 组合面＝上游 cordis.patch.yml 的三行，本文件按路径逐条挂载：
+#   browser          = ctx.browser 服务缝（seam）；
+#   browser-electron = Electron CDP provider。本 profile 无桌面外壳
+#       （electronViewHost 缺省）→ 走自托管分支：插件自行拉起 Electron
+#       子进程（host-main.js），本机 TCP JSON-RPC + 随机 token（stdin +
+#       环境变量双通道）驱动；崩溃自动重启。未来桌面端把 electronViewHost
+#       接上即变成产品内嵌面板，语义不变。
+#   tool-browser     = 模型可见的 browser_* 工具。
+# downloadDir 收敛到 DSH home 下 browser-downloads（产物卡绝对路径可预览）。
+#
+# 版本适配（2026-09-13）：electron 由上游 `>= 30.0.0` 钉为
+# `>= 40.0.0 < 44.0.0`（README 建议 ≥40、33.x 合成器缺陷、44+ 的包不再随
+# 安装下载二进制；pnpm 11 实测跳过其 postinstall，二进制用
+# `node install.js` 手动补拉一次即可）；dsh peer 由 `^0.1.1-rc.2` 升
+# `^0.1.5-rc.2`（npm semver 预发布规则下 ^0.1.1-rc.2 不覆盖 0.1.5-rc.2，
+# univer 同款问题）。vendor 副本 tsc 编译 + 26 项 node --test 全绿。
+#
+# 本地补丁（2026-09-13，用户裁定「P0-P2」）：
+#   1) src/tool-browser/annotate.ts —— 页面注释工具 browser_annotate_enable /
+#      browser_annotations：经 seam 的 execute（CDP Runtime.evaluate）往当前
+#      页注入注释层（Shadow DOM 悬浮球 → 划选元素 → 样式卡 + 评论 →
+#      localStorage 按 URL 存储），agent 读回结构化注释（选择器/文本/样式/
+#      评论）作精确改动指针。放在 tool-browser 内部是为了复用同一任务会话
+#      （provider.open 不按 label 去重，旁路插件会开出第二只窗口）。PRD-02 §18.6。
+#   2) 无 addInitScript 钩子：注释层不随导航存活，导航后需重新 enable
+#      （工具描述已写明）；已存注释在页面 origin 的 localStorage 里不丢。
+#
+# 【对表要回答的问题】0.1.6 官方已有 ui-sidebar-browser 客户端包与 browser 相关能力，
+# 这条 vendored 浏览器的哪些部分是官方没有的（共享真实窗口 + 人机验证接管 +
+# 页面注释层）？逐条回答后决定：整包退场 / 只保留 annotate 那块自研 / 保留。
+
+- insert:
+    - id: browser
+      name: ../../../Magic/plugins/dsh-builtin-browser/lib/browser/runtime.js
+
+- insert:
+    - id: browser-electron
+      name: ../../../Magic/plugins/dsh-builtin-browser/lib/browser-electron/entry.js
+      config:
+        viewHost: !!js ctx.get('electronViewHost')
+        downloadDir: !!js dshHomePath('browser-downloads')
+
+- insert:
+    - id: tool-browser
+      name: ../../../Magic/plugins/dsh-builtin-browser/lib/tool-browser/index.js
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── vendored 侧边聊天 + 划选注释 ────────────────────────────────────────────
+#
+# dsh-sidenote v0.3.4 整仓源拷贝（MIT，LICENSE 保留于插件目录；上游镜像
+# reference-project/g-yixuan-dsh-sidenote，GitHub g-yixuan/dsh-sidenote）。
+# 2026-09-13 用户裁定引入（「P0」）：侧边聊天与主会话渲染同材质（真 fork
+# 会话：工具卡/思考预览/任务卡/权限切换/@引用/图片附件）+ 划选注释
+# （Ctrl+. 模式、角标锚定、编号 chip、结构化协议块发给模型）+ 划选浮层
+# （添加到当前任务 / 在辅助对话中提问）+ 侧边结论一键回流主线。
+# 硬依赖 betterSidebar 服务（better-sidebar 行先于本行挂载）。
+#
+# 上游兼容矩阵明示「DSH 0.1.5-rc.x + dsh-better-sidebar ≥0.19.0 ✅ 沙箱实测」。
+# 该目录是自包含嵌套 workspace（react/tsdown 工具链），已从老仓根 workspace 排除
+# （pnpm-workspace.yaml），安装/构建在目录内执行（pnpm install && pnpm build，
+# lib/ 不入库）。vendored 副本 tsc 干净；157 项 vitest 中 13 项失败均为
+# locale 词典敏感（测试兜底走 navigator.language=OS 语言 zh-CN，CI 为 en；
+# 运行时跟随 DSH ctx.locale 设置，不受影响）。
+#
+# better-sidebar 自带的「侧边对话(beta)」tab 已打本地补丁隐藏
+# （src/client/builtins/tabs.tsx，sidechat 描述符 hidden:true）——两套侧边
+# 聊天并存会重演 ego/magic-browser 的混淆；已开着的旧 tab 仍可渲染、手动关。
+#
+# 【0.1.6 运行期已实测到的降级】本包在 fork 实例上加载并激活，但报三处宿主能力缺失：
+#   commandUi（斜杠命令注册）→ /side 与「/侧边」命令不可用；
+#   ctx.modules.import（动态组件复用）→ ProducedFiles 等降级为自绘；
+#   sidebarRight.focus（native tab 程序化聚焦）→ 聚焦既有侧边聊天 tab 不可用。
+# 这三条是 rc.2 时代写的代码撞 0.1.6 新宿主，属"要不要修/要不要换成官方形态"的对表项。
+
+- insert:
+    - id: side-chat
+      name: ../../../Magic/plugins/dsh-sidenote/lib/index.js
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── vendored 提示词优化 ────────────────────────────────────────────────────
+#
+# oss-prompt-optimizer v1.8.1 整仓源拷贝（MIT，LICENSE 保留于插件目录；上游
+# 镜像 reference-project/seven282-oss-prompt-optimizer，GitHub
+# seven282/oss-prompt-optimizer）。2026-09-13 用户裁定引入。
+# 工具 prompt_optimize + composer ✨ 一键优化草稿 + /optimize 命令 + 自动
+# 优化钩子（/optimize 前缀触发），经 harness LLM 服务完成（默认模型）。
+# 自包含嵌套 workspace（自带 lockfile），已从老仓根 workspace 排除；安装/构建
+# 在目录内执行。rc.2 适配（2026-09-13，tsc 干净 + vitest 562/562 全绿）：
+#   1) peer/devDeps ^0.1.0-rc.6 → ^0.1.5-rc.2（npm semver 预发布规则，
+#      univer/builtin-browser 同款问题）；dsh-client-runtime 例外——npm 上
+#      该包封顶 0.1.1-rc.2（next 线），钉精确版本；
+#   2) deepFreeze 自 0.1.5 起从 dsh-llm 移到 @deepseek-ai/dsh-util-values
+#      （新增 dependency ^0.1.5-rc.2，optimizer.ts import 同步调整）。
+
+- insert:
+    - id: prompt-optimizer
+      name: ../../../Magic/plugins/dsh-oss-prompt-optimizer/lib/index.js
+      config:
+        # rc.2 实测（2026-09-14）：glm-5.3-flash-local 是推理模型，优化复杂
+        # 提示词时推理段可超 60s，默认 timeoutMs 到点掐流 → aborted → 重试
+        # 烧完 maxCalls 预算。提到 180s（上游流式实测 6s/300 token，健康）。
+        timeoutMs: 180000
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── vendored 中文汉化 ──────────────────────────────────────────────────────
+#
+# dsh-harness-zh-cn v0.2.0 整仓源拷贝（MIT，LICENSE 保留于插件目录；上游镜像
+# reference-project/zjl1989-li-dsh-harness-zh-cn，GitHub zjl1989-li/dsh-harness-zh-cn）。
+# 2026-09-13 用户裁定引入。纯运行时汉化：system-prompt/assemble 瀑布钩子汉化系统
+# 提示词/工具描述，client 半 patch ctx.locale.lookup 让 zh 词典生效 + 汉化命令菜单/
+# 市场描述；不改 DSH 源码，卸载即还原。lib/ 上游即入库（免构建）。
+# 自包含嵌套 workspace，已从老仓根 workspace 排除；目录内 pnpm install 装运行时
+# 依赖。rc.2 适配：dsh-llm 依赖 0.0.1-rc.1 → 0.1.5-rc.2（lib 用 BlockAssembler /
+# createUserMessage，rc.2 均在；import 冒烟验证通过）。
+#
+# 【已知】部分汉化在 rc.2 上就已失效（词典挂不上某些新面），且 0.1.6 官方自带
+# zh 语料覆盖程度未核 —— 对表项：官方 locale 到哪一步，我们还需要它多少。
+
+- insert:
+    - id: harness-zh
+      name: ../../../Magic/plugins/dsh-harness-zh-cn/lib/index.js
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── vendored 第三方侧边栏工作台 ─────────────────────────────────────────────
+#
+# dsh-better-sidebar v0.19.1 整仓源拷贝（MIT，LICENSE 保留于插件目录；上游镜像
+# reference-project/DSH-better-sidebar，GitHub omdsh-dev/DSH-better-sidebar）。
+# 2026-09-13 用户裁定：整仓 vendor，本清单按路径挂载。
+#
+# 它向原生右侧栏注册 tab 类型（editor / 文件变动 / 任务管理 / 侧边对话 / 终端 /
+# 浏览器），以 extension 优先级接管官方 files 页与 text 兜底预览（注销即复位），
+# 另有底部工作台；对外暴露 ctx.betterSidebar 服务。与 magic-ceo-ui 的
+# magicCeoMember tab（同一原生 API，register.ts:388-397）共存，kind 不冲突。
+# lib/*.js 客户端产物不入库（~44MB）：由包的 prepare 钩子在 pnpm install 时构建。
+#
+# 【对表要回答的问题（用户已点名）】它的「浏览器控制」「文件管理」「终端」三块，
+# 0.1.6 官方已有对应客户端包（本会话加载列表里可见 dsh-client-ui-sidebar-browser /
+# -files / -terminal / -documentpreview）。按"官方有就用官方并退役被替代那份"的
+# 裁定，这三块应当退场；剩下真正不可替代的是不是只有「侧边对话」？答完这张表，
+# 本包要么整条删除，要么缩成一条我们自己的右坞 tab 实现。
+
+- insert:
+    - id: better-sidebar
+      name: ../../../Magic/plugins/dsh-better-sidebar/lib/index.js
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── vendored Univer Office ─────────────────────────────────────────────────
+#
+# dsh-univer-office v0.2.14 整仓源拷贝（Apache-2.0，LICENSE 保留于插件目录；
+# 上游镜像 reference-project/dsh-univer-office，GitHub dream-num/dsh-univer-office）。
+# 2026-09-13 用户裁定：整仓 vendor，全功能接入。
+# 版本适配（2026-09-13）：@deepseek-ai/* peers 升到 ^0.1.5-rc.1、devDeps 钉
+# 0.1.5-rc.2，四段 typecheck 对 rc.2 全绿；不改任何 src。该目录是自包含 monorepo，
+# 已从老仓根 workspace 排除，安装/构建在目录内执行。
+# 隐私：上游默认开匿名遥测（不含文件内容与路径），挂载 config 里关闭。
+#
+# 【临时摘除 2026-09-21】它的 client entry 在 0.1.6 上不激活，而 web boot 把
+# "有 entry 未激活"当致命错误（整壳停在 Failed to load plugins）。不摘就看不到产品界面。
+# 待裁定：修还是退场（官方 ui-sidebar-documentpreview 能覆盖只读预览到什么程度未核）。
+# 恢复：解开下面 5 行。
+# - insert:
+#     - id: univer
+#       name: ../../../Magic/plugins/dsh-univer-office/lib/index.js
+#       config:
+#         telemetry: false
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ── 已裁退役（源码仍躺在老仓 plugins/，随老仓归档）──────────────────────────
+#
+# magic-browser v1（2026-09-13 摘除）：「无头 + 直播画布」形态能看不能用；复盘见
+#   老仓 docs/02-实现/08-自研浏览器插件.md。
+# dsh-ego-browser v0.8.3（2026-09-13 摘除）：与 magic-browser 两套 browser_* 并存
+#   导致模型随机选择、自动激活面板顶掉用户正在看的页面。
+# dsh-any-background v0.2.4（2026-09-13 摘除）：「主题没什么用了」。
+# Tencent BrowserSkill 桥接 0.2.1（2026-09-13 摘除）：形态不符——要求装商店扩展、
+#   控制用户自己的日常浏览器。
+# magic-engineering（2026-09-15 随工程模式一并删除）：CEO 是唯一协作组织方式。
+#
+# 恢复任何一条：去老仓 git 历史取当时的 insert 块与其 config，别在本文件里复原。

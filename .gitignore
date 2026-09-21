@@ -47,3 +47,6 @@ worktrees/
 .agents/worktrees/
 .typert-*/
 native/system/test/bin/
+
+# Magic 产品层运行态（start-web.mjs 默认 DSH_HOME）
+.magic-live/
